@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PhysCue: Visual Cues for Adaptive Action in Vision-Language-Action Models</title>
+  <meta name="description" content="PhysCue estimates physical property intervals from visual cues and uses them to bound the gripper command and motion speed of a frozen VLA.">
+  <meta name="keywords" content="Vision-Language-Action, VLA, Physical AI, Robot Manipulation, Physical Properties, PhysCue">
+
+  <!-- Social preview (TODO: add static/images/teaser.png and uncomment) -->
+  <meta property="og:title" content="Visual Cues for Adaptive Action in Vision-Language-Action Models">
+  <meta property="og:description" content="PhysCue: bounding VLA actions with physical properties estimated from visual cues.">
+  <!-- <meta property="og:image" content="static/images/teaser.png"> -->
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Castoro&family=JetBrains+Mono&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --text: #1f2328;
+      --muted: #5c6670;
+      --line: #e4e7eb;
+      --bg-soft: #f6f7f9;
+      --accent: #3b5bdb;
+      --accent-soft: #edf2ff;
+      --ours: #fff4e6;
+      --dark: #24292f;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans", system-ui, sans-serif;
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 17px;
+      background: #fff;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 48px 0; }
+    section + section { border-top: 1px solid var(--line); }
+    h2 {
+      font-family: "Castoro", Georgia, serif;
+      font-size: 2rem;
+      font-weight: 400;
+      text-align: center;
+      margin: 0 0 24px;
+    }
+    h3 { font-size: 1.2rem; margin: 32px 0 12px; }
+    p { margin: 0 0 16px; }
+
+    /* ---------- Hero ---------- */
+    .hero { text-align: center; padding: 64px 0 32px; }
+    .hero h1 {
+      font-family: "Castoro", Georgia, serif;
+      font-weight: 400;
+      font-size: 2.6rem;
+      line-height: 1.2;
+      margin: 0 0 8px;
+    }
+    .hero .name { color: var(--accent); }
+    .hero .subtitle { font-size: 1.15rem; color: var(--muted); margin-bottom: 24px; }
+    .authors { font-size: 1.1rem; margin-bottom: 4px; }
+    .authors a { color: var(--accent); margin: 0 6px; white-space: nowrap; }
+    .affil { color: var(--muted); margin-bottom: 8px; }
+    .venue { color: var(--muted); font-size: 0.95rem; margin-bottom: 20px; }
+
+    .buttons { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--dark); color: #fff;
+      padding: 9px 18px; border-radius: 999px;
+      font-size: 0.95rem; font-weight: 500;
+    }
+    .btn:hover { background: #3d444d; text-decoration: none; }
+    .btn.disabled { opacity: 0.45; pointer-events: none; }
+    .btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+    /* ---------- Placeholders (replace with real media) ---------- */
+    .ph {
+      background: var(--bg-soft);
+      border: 2px dashed #c9ced6;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 0.95rem; text-align: center;
+      padding: 24px;
+    }
+    .ph.teaser { aspect-ratio: 16 / 7; }
+    .ph.figure { aspect-ratio: 16 / 8; }
+    .ph.video { aspect-ratio: 16 / 9; }
+    figure { margin: 0 0 16px; }
+    figcaption { color: var(--muted); font-size: 0.92rem; margin-top: 8px; }
+    img, video { max-width: 100%; border-radius: 12px; display: block; }
+
+    /* ---------- Contribution cards ---------- */
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
+    .card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+      background: #fff;
+    }
+    .card .tag {
+      display: inline-block; font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--accent); background: var(--accent-soft);
+      padding: 2px 10px; border-radius: 999px; margin-bottom: 10px;
+    }
+    .card h4 { margin: 0 0 6px; font-size: 1.05rem; }
+    .card p { font-size: 0.95rem; color: var(--muted); margin: 0; }
+
+    /* ---------- News ---------- */
+    .news { list-style: none; padding: 0; margin: 0; }
+    .news li { padding: 6px 0; }
+    .news .date { font-weight: 600; margin-right: 8px; }
+
+    .abstract { text-align: justify; }
+
+    /* ---------- Diagnostic callout ---------- */
+    .three-ways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
+    .way { border-radius: 12px; padding: 18px; background: var(--bg-soft); }
+    .way .label { font-weight: 600; margin-bottom: 4px; }
+    .way .result { font-size: 0.95rem; color: var(--muted); }
+    .way.good { background: #ebfbee; }
+    .way.bad { background: #fff5f5; }
+
+    /* ---------- Leaderboard ---------- */
+    .lb-controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 16px; }
+    .chip {
+      border: 1px solid var(--line); background: #fff; color: var(--text);
+      padding: 6px 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 0.9rem;
+    }
+    .chip.active { background: var(--dark); color: #fff; border-color: var(--dark); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { padding: 10px 14px; text-align: center; white-space: nowrap; }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+    thead th {
+      background: var(--bg-soft); font-weight: 600; cursor: pointer; user-select: none;
+      border-bottom: 1px solid var(--line);
+    }
+    thead th .arrow { color: var(--muted); font-size: 0.8em; margin-left: 4px; }
+    tbody tr + tr td { border-top: 1px solid var(--line); }
+    tr.ours td { background: var(--ours); font-weight: 600; }
+    td.best { font-weight: 700; }
+    td.second { text-decoration: underline; }
+    .type-badge {
+      font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: var(--bg-soft); color: var(--muted);
+    }
+    .lb-note { color: var(--muted); font-size: 0.88rem; margin-top: 10px; }
+
+    /* ---------- Model card table ---------- */
+    .simple-table td, .simple-table th { text-align: left; }
+    .simple-table thead th { cursor: default; }
+
+    /* ---------- Qualitative examples ---------- */
+    .examples { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    details {
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-top: 10px;
+      font-size: 0.95rem;
+    }
+    summary { cursor: pointer; font-weight: 500; }
+
+    /* ---------- BibTeX ---------- */
+    .bib { position: relative; }
+    pre {
+      background: var(--bg-soft); border-radius: 12px; padding: 20px; overflow-x: auto;
+      font-family: "JetBrains Mono", monospace; font-size: 0.85rem; line-height: 1.5; margin: 0;
+    }
+    .copy {
+      position: absolute; top: 12px; right: 12px;
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 4px 10px; cursor: pointer; font: inherit; font-size: 0.85rem;
+    }
+
+    footer { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 40px 0; border-top: 1px solid var(--line); }
+
+    @media (max-width: 760px) {
+      .hero h1 { font-size: 1.9rem; }
+      .cards, .three-ways, .examples { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- =====================================================================
+     HERO
+     ===================================================================== -->
+<header class="hero">
+  <div class="container">
+    <h1><span class="name">PhysCue</span>: Visual Cues for Adaptive Action<br>in Vision-Language-Action Models</h1>
+
+    <div class="authors">
+      <a href="https://openreview.net/profile?id=~Minjoo_Kim2">Minjoo Kim</a>
+      <a href="https://openreview.net/profile?id=~Chaewon_Park4">Chaewon Park</a>
+      <a href="https://openreview.net/profile?id=~Seongbeen_Lee1">Seongbeen Lee</a>
+      <a href="https://openreview.net/profile?id=~Gina_Yoon1">Gina Yoon</a>
+      <a href="https://openreview.net/profile?id=~Subin_Kim10">Subin Kim</a>
+      <a href="https://openreview.net/profile?id=~Soohyun_Park3">Soohyun Park</a>
+      <a href="https://openreview.net/profile?id=~Joo_Yong_Sim1">Joo Yong Sim</a>
+      <a href="https://openreview.net/profile?id=~Kibeom_Hong1">Kibeom Hong</a>
+    </div>
+    <div class="affil">Sookmyung Women's University</div>
+    <!-- TODO: after acceptance, replace with e.g. "CVPR 2027". Do NOT name the venue while under review. -->
+    <div class="venue">&nbsp;</div>
+
+    <div class="buttons">
+      <!-- TODO: fill in links. Remove class="disabled" once a link is live. -->
+      <a class="btn disabled" href="#">
+        <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15a0 0 0 0 1 0 0H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V8h4.5L14 3.5z"/></svg>
+        Paper
+      </a>
+      <a class="btn disabled" href="#">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v2H4zm0 7h16v2H4zm0 7h10v2H4z"/></svg>
+        arXiv
+      </a>
+      <a class="btn disabled" href="#">
+        <svg viewBox="0 0 24 24"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
+        Code
+      </a>
+      <a class="btn disabled" href="#">🤗 Model</a>
+      <a class="btn disabled" href="#">🤗 Benchmark</a>
+      <a class="btn" href="#leaderboard">🏆 Leaderboard</a>
+    </div>
+  </div>
+</header>
+
+<!-- =====================================================================
+     TEASER + CONTRIBUTIONS
+     ===================================================================== -->
+<section style="padding-top: 16px;">
+  <div class="container">
+    <figure>
+      <!-- TODO: replace with <img src="static/images/teaser.png" alt="PhysCue teaser"> or a <video> -->
+      <div class="ph teaser">Teaser figure / video<br>(egg · ripe peach · cold can with condensation)</div>
+      <figcaption>
+        Recognizing an object is not enough to handle it. <b>PhysCue</b> reads visual cues such as material, volume and
+        surface appearance to estimate physical property intervals, then bounds a frozen VLA's gripper command and motion speed.
+      </figcaption>
+    </figure>
+
+    <div class="cards">
+      <div class="card">
+        <span class="tag">Finding</span>
+        <h4>Language does not carry physics</h4>
+        <p>Given ground-truth properties, a VLA barely changes its action when they arrive as text, but fixes [X]% of failures when they set the gripper directly.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Benchmark</span>
+        <!-- TODO: benchmark name -->
+        <h4>[Benchmark Name]</h4>
+        <p>RoboCasa tasks spanning rigid, fragile and deformable objects, with per-property failure attribution.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Model</span>
+        <h4>PhysCue</h4>
+        <p>Visual-cue property intervals that bound a frozen VLA, refined by motor current after contact. [Y]% fewer failures.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     NEWS
+     ===================================================================== -->
+<section>
+  <div class="container">
+    <h2>News</h2>
+    <ul class="news">
+      <!-- TODO: add dated updates, newest first -->
+      <li><span class="date">[YYYY-MM-DD]</span>Paper released on arXiv.</li>
+      <li><span class="date">[YYYY-MM-DD]</span>Code, model and benchmark released.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- =====================================================================
+     ABSTRACT
+     ===================================================================== -->
+<section>
+  <div class="container">
+    <h2>Abstract</h2>
+    <p class="abstract">
+      A robot that lifts an egg, a ripe peach, and a cold can covered in condensation must hold each of them differently,
+      even when it recognizes all three correctly. Vision-language-action (VLA) models decide how to act from appearance and
+      language, and their actions barely change when an object's mass, friction, fragility, or deformability changes. To
+      locate where this breaks, we give the same policy ground-truth physical properties in three ways. Setting the gripper
+      command directly from these properties removes [X]% of failures, while stating them as text leaves actions nearly
+      unchanged. The knowledge is useful, but the language channel does not carry it to the action. Building on this
+      observation, we introduce <b>PhysCue</b>, which estimates physical property intervals from visual cues such as material,
+      volume, and surface appearance, and uses them to bound the gripper command and motion speed of a frozen VLA. Motor
+      current refines the interval after contact. On RoboCasa tasks spanning rigid, fragile, and deformable objects, PhysCue
+      reduces failures by [Y]% over property-aware baselines, and correcting only the property responsible for a failure
+      fixes that failure without affecting others.
+    </p>
+  </div>
+</section>
+
+<!-- =====================================================================
+     DIAGNOSTIC: WHERE DOES IT BREAK?
+     ===================================================================== -->
+<section id="diagnosis">
+  <div class="container">
+    <h2>Where Does It Break?</h2>
+    <p>
+      We give the same VLA policy ground-truth physical properties through three different channels and measure how its
+      failures change.
+    </p>
+    <!-- TODO: adjust the three channels and numbers to match the paper -->
+    <div class="three-ways">
+      <div class="way bad">
+        <div class="label">① As text in the instruction</div>
+        <div class="result">Actions remain nearly unchanged.</div>
+      </div>
+      <div class="way">
+        <div class="label">② [Second channel]</div>
+        <div class="result">[Result]</div>
+      </div>
+      <div class="way good">
+        <div class="label">③ Directly set the gripper command</div>
+        <div class="result">Removes [X]% of failures.</div>
+      </div>
+    </div>
+    <p>The knowledge is useful, but the language channel does not carry it to the action.</p>
+    <figure>
+      <div class="ph figure">Diagnostic figure (failure rate by channel)</div>
+    </figure>
+  </div>
+</section>
+
+<!-- =====================================================================
+     BENCHMARK
+     ===================================================================== -->
+<section id="benchmark">
+  <div class="container">
+    <h2>[Benchmark Name]</h2>
+    <p>
+      <!-- TODO: describe benchmark construction -->
+      [One-paragraph description: built on RoboCasa, object categories (rigid / fragile / deformable), how physical
+      properties (mass, friction, fragility, deformability) are varied, and how each failure is attributed to a property.]
+    </p>
+
+    <h3>Overview</h3>
+    <figure>
+      <div class="ph figure">Benchmark overview figure</div>
+    </figure>
+
+    <h3>Statistics</h3>
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead><tr><th>Category</th><th>Example objects</th><th># Tasks</th><th># Objects</th><th># Episodes</th></tr></thead>
+        <tbody>
+          <tr><td>Rigid</td><td>[cold can, …]</td><td>–</td><td>–</td><td>–</td></tr>
+          <tr><td>Fragile</td><td>[egg, …]</td><td>–</td><td>–</td><td>–</td></tr>
+          <tr><td>Deformable</td><td>[ripe peach, …]</td><td>–</td><td>–</td><td>–</td></tr>
+          <tr><td><b>Total</b></td><td></td><td>–</td><td>–</td><td>–</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     METHOD
+     ===================================================================== -->
+<section id="method">
+  <div class="container">
+    <h2>PhysCue</h2>
+    <figure>
+      <div class="ph figure">Method overview figure</div>
+      <figcaption>
+        PhysCue estimates physical property intervals from visual cues (material, volume, surface appearance) and uses them
+        to bound the gripper command and motion speed of a frozen VLA. After contact, motor current refines the interval.
+      </figcaption>
+    </figure>
+
+    <h3>1. Property intervals from visual cues</h3>
+    <p>[Describe how material, volume and surface appearance map to intervals over mass, friction, fragility and deformability.]</p>
+
+    <h3>2. Bounding a frozen VLA</h3>
+    <p>[Describe how the intervals bound the gripper command and motion speed without retraining the policy.]</p>
+
+    <h3>3. Refinement with motor current</h3>
+    <p>[Describe how motor current after contact narrows the interval.]</p>
+  </div>
+</section>
+
+<!-- =====================================================================
+     LEADERBOARD
+     ===================================================================== -->
+<section id="leaderboard">
+  <div class="container">
+    <h2>Leaderboard</h2>
+    <div class="lb-controls" id="lb-filters">
+      <button class="chip active" data-filter="all">All</button>
+      <button class="chip" data-filter="VLA">VLA</button>
+      <button class="chip" data-filter="Property-aware">Property-aware</button>
+      <button class="chip" data-filter="Oracle">Oracle</button>
+    </div>
+    <div class="table-wrap">
+      <table id="lb">
+        <thead><tr id="lb-head"></tr></thead>
+        <tbody id="lb-body"></tbody>
+      </table>
+    </div>
+    <div class="lb-note">
+      Success rate (%) on [Benchmark Name]. Click a column to sort. <b>Bold</b>: best, <u>underline</u>: second best
+      (oracle rows excluded). Last updated: [YYYY-MM-DD].
+      <!-- TODO: submission instructions, e.g. "To add your model, open an issue on GitHub." -->
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     QUALITATIVE EXAMPLES
+     ===================================================================== -->
+<section id="examples">
+  <div class="container">
+    <h2>Qualitative Results</h2>
+    <div class="examples">
+      <!-- TODO: replace placeholders with <video src="static/videos/egg_base.mp4" autoplay muted loop playsinline></video> -->
+      <div>
+        <div class="ph video">Base VLA · egg</div>
+        <details><summary>What went wrong?</summary>[Gripper closes with the same force as for a can; the egg cracks.]</details>
+      </div>
+      <div>
+        <div class="ph video">PhysCue · egg</div>
+        <details><summary>What changed?</summary>[Estimated fragility interval caps gripper force; grasp succeeds.]</details>
+      </div>
+      <div>
+        <div class="ph video">Base VLA · cold can</div>
+        <details><summary>What went wrong?</summary>[Condensation lowers friction; the can slips.]</details>
+      </div>
+      <div>
+        <div class="ph video">PhysCue · cold can</div>
+        <details><summary>What changed?</summary>[Low-friction cue raises grip and slows motion.]</details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     BIBTEX
+     ===================================================================== -->
+<section id="bibtex">
+  <div class="container">
+    <h2>BibTeX</h2>
+    <div class="bib">
+      <button class="copy" onclick="copyBib(this)">Copy</button>
+<pre id="bibtex-text">@article{kim2026physcue,
+  title   = {Visual Cues for Adaptive Action in Vision-Language-Action Models},
+  author  = {Kim, Minjoo and Park, Chaewon and Lee, Seongbeen and Yoon, Gina and
+             Kim, Subin and Park, Soohyun and Sim, Joo Yong and Hong, Kibeom},
+  journal = {arXiv preprint arXiv:XXXX.XXXXX},
+  year    = {2026}
+}</pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    This page is adapted from the <a href="https://nerfies.github.io/">Nerfies</a> project page, licensed under
+    <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
+  </div>
+</footer>
+
+<script>
+  /* ================================================================
+     LEADERBOARD DATA — edit this array to update the table.
+     type: "VLA" | "Property-aware" | "Oracle" | "Ours"
+     Use null for missing values.
+     ================================================================ */
+  const COLUMNS = [
+    { key: "rigid",      label: "Rigid" },
+    { key: "fragile",    label: "Fragile" },
+    { key: "deformable", label: "Deformable" },
+    { key: "overall",    label: "Overall" },
+  ];
+  const ROWS = [
+    { model: "[Base VLA, e.g. π0]",              type: "VLA",            rigid: null, fragile: null, deformable: null, overall: null },
+    { model: "[Base VLA 2]",                     type: "VLA",            rigid: null, fragile: null, deformable: null, overall: null },
+    { model: "+ GT properties as text",          type: "Property-aware", rigid: null, fragile: null, deformable: null, overall: null },
+    { model: "[Property-aware baseline]",        type: "Property-aware", rigid: null, fragile: null, deformable: null, overall: null },
+    { model: "+ GT properties → gripper",        type: "Oracle",         rigid: null, fragile: null, deformable: null, overall: null },
+    { model: "PhysCue (Ours)",                   type: "Ours",           rigid: null, fragile: null, deformable: null, overall: null },
+  ];
+
+  let sortKey = "overall", sortDir = -1, filter = "all";
+
+  function rank(col, rows) {
+    const vals = rows.filter(r => r.type !== "Oracle" && r[col] != null).map(r => r[col]);
+    const uniq = [...new Set(vals)].sort((a, b) => b - a);
+    return { best: uniq[0], second: uniq[1] };
+  }
+
+  function render() {
+    const head = document.getElementById("lb-head");
+    const arrow = k => k === sortKey ? (sortDir < 0 ? "▼" : "▲") : "";
+    head.innerHTML =
+      `<th>#</th><th>Model</th><th>Type</th>` +
+      COLUMNS.map(c => `<th data-key="${c.key}">${c.label}<span class="arrow">${arrow(c.key)}</span></th>`).join("");
+    head.querySelectorAll("th[data-key]").forEach(th => th.onclick = () => {
+      const k = th.dataset.key;
+      sortDir = (k === sortKey) ? -sortDir : -1;
+      sortKey = k;
+      render();
+    });
+
+    let rows = ROWS.filter(r => filter === "all" || r.type === filter || r.type === "Ours");
+    rows = [...rows].sort((a, b) => {
+      const x = a[sortKey], y = b[sortKey];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return (x - y) * sortDir;
+    });
+    const ranks = Object.fromEntries(COLUMNS.map(c => [c.key, rank(c.key, rows)]));
+
+    document.getElementById("lb-body").innerHTML = rows.map((r, i) => {
+      const cells = COLUMNS.map(c => {
+        const v = r[c.key];
+        let cls = "";
+        if (v != null && r.type !== "Oracle") {
+          if (v === ranks[c.key].best) cls = "best";
+          else if (v === ranks[c.key].second) cls = "second";
+        }
+        return `<td class="${cls}">${v == null ? "—" : v.toFixed(1)}</td>`;
+      }).join("");
+      return `<tr class="${r.type === "Ours" ? "ours" : ""}">
+        <td>${i + 1}</td><td>${r.model}</td><td><span class="type-badge">${r.type}</span></td>${cells}</tr>`;
+    }).join("");
+  }
+
+  document.querySelectorAll("#lb-filters .chip").forEach(btn => btn.onclick = () => {
+    document.querySelectorAll("#lb-filters .chip").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    filter = btn.dataset.filter;
+    render();
+  });
+  render();
+
+  function copyBib(btn) {
+    const text = document.getElementById("bibtex-text").innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = "Copied!";
+      setTimeout(() => btn.textContent = "Copy", 1500);
+    });
+  }
+</script>
+</body>
+</html>
